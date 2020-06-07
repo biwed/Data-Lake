@@ -1,0 +1,76 @@
+
+mdw, smdw, sdw1, sdw2, gp-stat
+Репозитарий http://centos-mirror.rbc.ru/pub/centos/7/os/x86_64/
+Добавление пользователя в sudo
+usermod -aG wheel username
+
+Установка сети:
+sudo vi /etc/sysconfig/network-scripts/ifcfg-enp0s3
+TYPE=Ethernet
+PROXY_METHOD=none
+BROWSER_ONLY=no
+BOOTPROT=static
+DEFROUTE=yes
+IPV4_FAILURE_FATAL=no
+IPV6INIT=yes
+IPV6_AUTOCONF=yes
+IPV6_DEFROUTE=yes
+IPV6_FAILURE_FATAL=no
+IPV6_ADDR_GEN_MODE=stable-privacy
+NAME=enp0s3
+UUID=f11152c5-8f67-4d0b-9e02-2771a1ad3a75
+DEVICE=enp0s3
+ONBOOT=yes
+IPADDR=192.168.0.20
+PREFIX=24
+GATEWAY=192.168.0.1
+DNS1=77.88.8.8
+DNS2=77.88.8.1
+
+sudo vi /etc/sysconfig/network
+HOSTNAME=gp-master
+
+sudo timedatectl set-timezone Asia/Vladivostok
+
+systemctl restart network
+cat /etc/resolv.conf для получения списка активных DNS адресов.
+
+
+
+
+sudo hostnamectl set-hostname hadoop-4 # меняем если надо название хоста
+
+Добавляем пути, до хостов (если требуется) 
+sudo vi /etc/hosts
+127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4
+::1         localhost localhost.localdomain localhost6 localhost6.localdomain6
+192.168.0.21 gp-mdw
+192.168.0.22 gp-sdw1
+192.168.0.23 gp-sdw2
+192.168.0.20 gp-stat
+
+
+/*
+sudo vi  /etc/yum.repos.d/RBC.repo
+
+[CentOS_Extras]
+name=CentOS_Extras
+baseurl=http://centos-mirror.rbc.ru/pub/centos/7/extras/$basearch/
+gpgkey=http://centos-mirror.rbc.ru/pub/centos/7/os/x86_64/RPM-GPG-KEY-CentOS-7
+gpgcheck=1
+
+[CentOS_Updates]
+name=CentOS_Updates
+baseurl=http://centos-mirror.rbc.ru/pub/centos/7/updates/$basearch/
+gpgkey=http://centos-mirror.rbc.ru/pub/centos/7/os/x86_64/RPM-GPG-KEY-CentOS-7
+gpgcheck=1
+
+[CentOS_Base]
+name=CentOS_Base
+baseurl=http://centos-mirror.rbc.ru/pub/centos/7/os/$basearch/
+gpgkey=http://centos-mirror.rbc.ru/pub/centos/7/os/x86_64/RPM-GPG-KEY-CentOS-7
+gpgcheck=1
+
+
+sudo yum update
+*/

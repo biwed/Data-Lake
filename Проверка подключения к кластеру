@@ -1,0 +1,9 @@
+Проверка подключения к кластеру
+curl -vi -X GET \
+         -H "Accept: text/xml" \
+         "http://hadoop-2:20550/version/cluster"
+
+Получить список всех namespaces 
+curl -vi -X GET \
+         -H "Accept: text/xml" \
+         "http://hadoop-2:20550/namespaces/"

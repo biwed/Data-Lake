@@ -1,0 +1,255 @@
+# Настройка виртуальных машин для кластера.
+Пусть у нас имеется конфигурация
+- 192.168.0.21 hadoop-1
+- 192.168.0.22 hadoop-2
+- 192.168.0.23 hadoop-3
+- 192.168.0.24 hadoop-4
+- 192.168.0.20 cm Хост для управлением кластера.
+
+Для установки cloudera требуется полнценный root пользователь и возможность подключения к нему по ssh.
+Добавление пользователя в sudo
+```
+sudo passwd root
+sudo passwd -u root
+```
+Включаем на сервере SSH возможность полдключаться под пользователем root к хосту.
+```
+vi /etc/ssh/sshd_config
+PermitRootLogin yes #Меняем no на yes
+```
+Перезагружаем ssh сервер.
+systemctl restart ssh || systemctl restart sshd
+
+Настраиваем сеть через netplan.
+Для установка сети сети правим файл:
+```
+sudo vi /etc/netplan/50-cloud-init.yaml 
+network:
+    ethernets:
+        enp0s3:
+            dhcp4: false
+            addresses: [192.168.0.21/24, ]
+            gateway4: 192.168.0.1
+            nameservers:
+                addresses: [77.88.8.8, 77.88.8.1]
+    version: 2
+```
+Правим название хоста
+sudo vi /etc/sysconfig/network
+HOSTNAME=hadoop-1
+
+sudo timedatectl set-timezone Asia/Vladivostok
+#Перегрузка 
+sudo netplan apply
+cat /etc/resolv.conf для получения списка активных DNS адресов.
+
+
+
+
+sudo hostnamectl set-hostname hadoop-1 # меняем если надо название хоста
+
+Добавляем пути, до хостов (если требуется)
+cat /etc/hosts
+127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4
+::1         localhost localhost.localdomain localhost6 localhost6.localdomain6
+192.168.0.21 hadoop-1
+192.168.0.22 hadoop-2
+192.168.0.23 hadoop-3
+192.168.0.24 hadoop-4
+192.168.0.20    cm
+
+
+Копируем ключ, для автоматического подключения к хосту
+ssh-copy-id aleksandr@192.168.0.20
+
+Отключаем файрволл
+sudo service ufw stop
+
+
+
+Устанавливаем синхронизацию сервисов и делаем автоматическую загрузку
+sudo apt-get -y install ntp
+#sudo systemctl start ntp
+#sudo systemctl enable ntp
+
+Проверяем версию питона
+sudo apt -y install python2.7 python-minimal
+sudo apt -y install python-pip curl unzip tar  wget net-tools telnet
+перезапускаем машину.
+
+#Меняем настройку сетей для каждой из машин.
+
+
+
+Добавляем репозитарий
+https://archive.cloudera.com/cm6/6.2.1/ubuntu1804/apt/archive.key
+
+sudo apt -y install wget
+
+wget https://archive.cloudera.com/cm6/6.2.1/ubuntu1604/apt/archive.key
+sudo apt-key add archive.key
+
+sudo add-apt-repository "deb [arch=amd64] http://archive.cloudera.com/cm6/6.2.1/ubuntu1804/apt bionic-cm6.2.1 contrib"
+sudo apt-get update
+
+Устанавливаем java
+sudo apt-get -y install oracle-j2sdk1.8
+
+Устанавливаем менеджер
+sudo apt-get -y install cloudera-manager-daemons cloudera-manager-agent cloudera-manager-server
+
+auto-TLS with an embedded Cloudera Manager CA
+sudo JAVA_HOME=/usr/java/jdk1.8.0_181-cloudera /opt/cloudera/cm-agent/bin/certmanager setup --configure-services
+
+Прописываем JAVA_HOME
+sudo JAVA_HOME=/usr/java/jdk1.8.0_181-cloudera /opt/cloudera/cm-agent/bin/certmanager --location /opt/cloudera/CMCA setup --configure-services
+
+
+
+Устанавливаем менеждер  пакетов pip и драйвера.
+sudo yum -y install epel-release
+#sudo yum -y update
+sudo yum -y install python-pip
+sudo pip install --upgrade pip
+sudo pip install psycopg2==2.7.5 --ignore-installed
+
+
+Устанавливаем PG
+#####################
+sudo apt-get -y install postgresql
+sudo postgresql-setup initdb
+sudo vi  /etc/postgresql/10/main/pg_hba.conf
+#sudo vi pg_hba.conf
+вставляем строку: 
+	host all all 127.0.0.1/32 md5 # 
+удаляем строку:
+	host all all 127.0.0.1/32 ident
+
+sudo vi /etc/postgresql/10/main/postgresql.conf
+listen_addresses ='*'
+shared_buffers=256MB
+wal_buffers=8MB
+checkpoint_completion_target=0.9
+
+Включаем автозагрузку PG
+sudo systemctl enable postgresql
+Перезагружаем PG
+service postgresql stop
+service postgresql star
+service postgresql restar
+
+########################
+
+Настраиваем БД для пользователей ..
+
+sudo -u postgres psql
+
+CREATE ROLE scm LOGIN PASSWORD 'test';
+CREATE DATABASE scm OWNER scm ENCODING 'UTF8';
+
+CREATE ROLE amon LOGIN PASSWORD 'test';
+CREATE DATABASE amon OWNER amon ENCODING 'UTF8';
+
+CREATE ROLE rman LOGIN PASSWORD 'test';
+CREATE DATABASE rman OWNER rman ENCODING 'UTF8';
+
+CREATE ROLE hue LOGIN PASSWORD 'test';
+CREATE DATABASE hue OWNER hue ENCODING 'UTF8';
+
+CREATE ROLE metastore LOGIN PASSWORD 'test';
+CREATE DATABASE metastore OWNER metastore ENCODING 'UTF8';
+ALTER DATABASE metastore SET standard_conforming_strings = off;
+
+CREATE ROLE sentry LOGIN PASSWORD 'test';
+CREATE DATABASE sentry OWNER sentry ENCODING 'UTF8';
+
+CREATE ROLE nav LOGIN PASSWORD 'test';
+CREATE DATABASE nav OWNER nav ENCODING 'UTF8';
+
+CREATE ROLE navms LOGIN PASSWORD 'test';
+CREATE DATABASE navms OWNER navms ENCODING 'UTF8';
+
+
+CREATE ROLE oozie LOGIN PASSWORD 'test';
+CREATE DATABASE oozie OWNER oozie ENCODING 'UTF8';
+
+Проверяем возможность подключиться к БД
+sudo /opt/cloudera/cm/schema/scm_prepare_database.sh postgresql scm scm
+Данные добавляются в  /etc/cloudera-scm-server/db.properties
+
+
+Стартуем сервер мониторинга кластера.
+sudo systemctl start cloudera-scm-server
+
+Проверяем статус лого
+
+sudo tail -f /var/log/cloudera-scm-server/cloudera-scm-server.log
+#Проверяем порты
+netstat -ltupn
+
+
+Для перестартовки агентов на хостах
+sudo service cloudera-scm-agent start
+sudo service cloudera-scm-agent stop
+sudo service cloudera-scm-agent restart
+
+
+
+
+
+
+
+
+
+
+
+Копируем ключ, для автоматического подключения к хосту
+ssh-copy-id aleksandr@192.168.0.20
+sudo yum install java-1.8.0-openjdk scp curl unzip tar  wget net-tools telnet
+
+Отключаем файрволл
+sudo systemctl disable firewalld
+sudo systemctl stop firewalld
+
+
+SELinux Ограничения
+getenforce # в случае если не Permissive или Disabled 
+Правим файл sudo vi /etc/selinux/config
+Меняем SELINUX=enforcing на SELINUX=disabled
+Выполняем команду setenforce 0
+Перегружаем машину
+
+Устанавливаем синхронизацию сервисов и делаем автоматическую загрузку
+sudo yum install ntp
+sudo systemctl start ntpd
+sudo systemctl enable ntpd
+
+
+vi /etc/profile
+umask 022
+
+
+
+
+
+
+Установка centos
+https://www.dmosk.ru/miniinstruktions.php?mini=centos-network
+Генерация ssh ключа
+https://www.digitalocean.com/community/tutorials/how-to-set-up-ssh-keys-on-centos7-ru
+
+Поменять имя машины
+http://blog.sedicomm.com/2018/07/22/kak-ustanovit-ili-izmenit-imya-uzla-hosta-v-centos-7/
+
+Настройка fire wall
+https://losst.ru/nastrojka-firewall-centos-7
+
+
+Отключене selinux
+https://losst.ru/kak-otklyuchit-selinux-v-centos-7
+
+how-to-use-existing-hbase-table-in-apache-phoenix
+http://khodeprasad.ml/blog/how-to-use-existing-hbase-table-in-apache-phoenix/
+
+sudo vi /etc/selinux/config
+

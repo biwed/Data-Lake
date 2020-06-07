@@ -1,0 +1,255 @@
+Добавление пользователя в sudo
+usermod -aG wheel username
+
+Установка сети:
+sudo vi /etc/sysconfig/network-scripts/ifcfg-enp0s3
+TYPE=Ethernet
+PROXY_METHOD=none
+BROWSER_ONLY=no
+BOOTPROT=static
+DEFROUTE=yes
+IPV4_FAILURE_FATAL=no
+IPV6INIT=yes
+IPV6_AUTOCONF=yes
+IPV6_DEFROUTE=yes
+IPV6_FAILURE_FATAL=no
+IPV6_ADDR_GEN_MODE=stable-privacy
+NAME=enp0s3
+UUID=f11152c5-8f67-4d0b-9e02-2771a1ad3a75
+DEVICE=enp0s3
+ONBOOT=yes
+IPADDR=192.168.0.20
+PREFIX=24
+GATEWAY=192.168.0.1
+DNS1=77.88.8.8
+DNS2=77.88.8.1
+
+sudo vi /etc/sysconfig/network
+HOSTNAME=hadoop-1.example.com
+
+sudo timedatectl set-timezone Asia/Vladivostok
+
+systemctl restart network
+cat /etc/resolv.conf для получения списка активных DNS адресов.
+
+
+
+
+sudo hostnamectl set-hostname hadoop-4 # меняем если надо название хоста
+
+Добавляем пути, до хостов (если требуется)
+cat /etc/hosts
+127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4
+::1         localhost localhost.localdomain localhost6 localhost6.localdomain6
+192.168.0.21 hadoop-1
+192.168.0.22 hadoop-2
+192.168.0.23 hadoop-3
+192.168.0.24 hadoop-4
+192.168.0.20 cm
+
+
+Копируем ключ, для автоматического подключения к хосту
+ssh-copy-id aleksandr@192.168.0.20
+
+Отключаем файрволл
+sudo systemctl disable firewalld
+sudo systemctl stop firewalld
+#sudo systemctl status firewalld проверка статуса.
+
+
+SELinux Ограничения
+getenforce # в случае если не Permissive или Disabled 
+Правим файл sudo vi /etc/selinux/config
+Меняем SELINUX=enforcing на SELINUX=permissive
+Выполняем команду setenforce 0
+Перегружаем машину
+
+Устанавливаем синхронизацию сервисов и делаем автоматическую загрузку
+sudo yum -y install ntp
+sudo systemctl start ntpd
+sudo systemctl enable ntpd
+
+Проверяем версию питона
+python --version
+Python 2.7.5
+перезапускаем машину.
+
+
+
+
+Добавляем репозитарий
+c6.3.1/redhat7/yum/cloudera-manager.repo
+
+sudo yum install wget
+
+sudo wget https://archive.cloudera.com/cm6/6.1.1/redhat7/yum/cloudera-manager.repo -P /etc/yum.repos.d/
+
+Устанавливаем java
+sudo yum -y install oracle-j2sdk1.8
+
+Устанавливаем менеджер
+sudo yum -y install cloudera-manager-daemons cloudera-manager-agent cloudera-manager-server
+
+auto-TLS with an embedded Cloudera Manager CA
+sudo JAVA_HOME=/usr/java/jdk1.8.0_181-cloudera /opt/cloudera/cm-agent/bin/certmanager setup --configure-services
+
+Прописываем JAVA_HOME
+sudo JAVA_HOME=/usr/java/jdk1.8.0_181-cloudera /opt/cloudera/cm-agent/bin/certmanager --location /opt/cloudera/CMCA setup --configure-services
+
+
+
+Устанавливаем менеждер  пакетов pip и драйвера.
+sudo yum -y install epel-release
+#sudo yum -y update
+sudo yum -y install python-pip
+sudo pip install --upgrade pip
+sudo pip install psycopg2==2.7.5 --ignore-installed
+
+
+Устанавливаем PG
+#####################
+sudo yum -y install postgresql-server
+sudo postgresql-setup initdb
+sudo vi  /var/lib/pgsql/data/pg_hba.conf
+#sudo vi pg_hba.conf
+вставляем строку: 
+	host all all 127.0.0.1/32 md5 # 
+удаляем строку:
+	host all all 127.0.0.1/32 ident
+
+sudo vi /var/lib/pgsql/data/postgresql.conf
+listen_addresses ='*'
+shared_buffers=256MB
+wal_buffers=8MB
+checkpoint_segments=16
+checkpoint_completion_target=0.9
+
+Включаем автозагрузку PG
+sudo systemctl enable postgresql
+Перезагружаем PG
+sudo systemctl restart postgresql
+
+########################
+
+Настраиваем БД для пользователей ..
+
+sudo -u postgres psql
+
+CREATE ROLE scm LOGIN PASSWORD 'test';
+CREATE DATABASE scm OWNER scm ENCODING 'UTF8';
+
+CREATE ROLE amon LOGIN PASSWORD 'test';
+CREATE DATABASE amon OWNER amon ENCODING 'UTF8';
+
+CREATE ROLE rman LOGIN PASSWORD 'test';
+CREATE DATABASE rman OWNER rman ENCODING 'UTF8';
+
+CREATE ROLE hue LOGIN PASSWORD 'test';
+CREATE DATABASE hue OWNER hue ENCODING 'UTF8';
+
+CREATE ROLE metastore LOGIN PASSWORD 'test';
+CREATE DATABASE metastore OWNER metastore ENCODING 'UTF8';
+ALTER DATABASE metastore SET standard_conforming_strings = off;
+
+CREATE ROLE sentry LOGIN PASSWORD 'test';
+CREATE DATABASE sentry OWNER sentry ENCODING 'UTF8';
+
+CREATE ROLE nav LOGIN PASSWORD 'test';
+CREATE DATABASE nav OWNER nav ENCODING 'UTF8';
+
+CREATE ROLE navms LOGIN PASSWORD 'test';
+CREATE DATABASE navms OWNER navms ENCODING 'UTF8';
+
+
+CREATE ROLE oozie LOGIN PASSWORD 'test';
+CREATE DATABASE oozie OWNER oozie ENCODING 'UTF8';
+
+Проверяем возможность подключиться к БД
+sudo /opt/cloudera/cm/schema/scm_prepare_database.sh postgresql scm scm
+Данные добавляются в  /etc/cloudera-scm-server/db.properties
+
+
+Стартуем сервер мониторинга кластера.
+sudo systemctl start cloudera-scm-server
+
+Проверяем статус лого
+
+sudo tail -f /var/log/cloudera-scm-server/cloudera-scm-server.log
+#Проверяем порты
+netstat -ltupn
+
+
+Для перестартовки агентов на хостах
+sudo service cloudera-scm-agent start
+sudo service cloudera-scm-agent stop
+sudo service cloudera-scm-agent restart
+
+
+
+
+
+
+
+
+
+
+
+Копируем ключ, для автоматического подключения к хосту
+ssh-copy-id aleksandr@192.168.0.20
+sudo yum install java-1.8.0-openjdk scp curl unzip tar  wget net-tools telnet
+
+Отключаем файрволл
+sudo systemctl disable firewalld
+sudo systemctl stop firewalld
+
+
+SELinux Ограничения
+getenforce # в случае если не Permissive или Disabled 
+Правим файл sudo vi /etc/selinux/config
+Меняем SELINUX=enforcing на SELINUX=disabled
+Выполняем команду setenforce 0
+Перегружаем машину
+
+Устанавливаем синхронизацию сервисов и делаем автоматическую загрузку
+sudo yum install ntp
+sudo systemctl start ntpd
+sudo systemctl enable ntpd
+
+
+vi /etc/profile
+umask 022
+
+
+
+
+
+
+Установка centos
+https://www.dmosk.ru/miniinstruktions.php?mini=centos-network
+Генерация ssh ключа
+https://www.digitalocean.com/community/tutorials/how-to-set-up-ssh-keys-on-centos7-ru
+
+Поменять имя машины
+http://blog.sedicomm.com/2018/07/22/kak-ustanovit-ili-izmenit-imya-uzla-hosta-v-centos-7/
+
+Настройка fire wall
+https://losst.ru/nastrojka-firewall-centos-7
+
+
+Отключене selinux
+https://losst.ru/kak-otklyuchit-selinux-v-centos-7
+
+how-to-use-existing-hbase-table-in-apache-phoenix
+http://khodeprasad.ml/blog/how-to-use-existing-hbase-table-in-apache-phoenix/
+
+sudo vi /etc/selinux/config
+
+
+
+Установка Oracel Java 
+wget --no-check-certificate --no-cookies --header "Cookie: \
+oraclelicense=accept-securebackup-cookie" https://download.oracle.com/otn-pub/java/jdk/8u251-b08/3d5a2bb8f8d4428bbe94aed7ec7ae784/jdk-8u251-linux-x64.rpm
+
+yum localinstall jdk-8u*-linux-x64.rpm
+
+sudo wget https://storage.googleapis.com/arenadata-repo/ambari/2.6.2/repos/ambari.repo -O /etc/yum.repos.d/ambari.repo
