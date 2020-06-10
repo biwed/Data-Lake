@@ -48,29 +48,3 @@ sudo vi /etc/hosts
 192.168.0.22 gp-sdw1
 192.168.0.23 gp-sdw2
 192.168.0.20 gp-stat
-
-
-/*
-sudo vi  /etc/yum.repos.d/RBC.repo
-
-[CentOS_Extras]
-name=CentOS_Extras
-baseurl=http://centos-mirror.rbc.ru/pub/centos/7/extras/$basearch/
-gpgkey=http://centos-mirror.rbc.ru/pub/centos/7/os/x86_64/RPM-GPG-KEY-CentOS-7
-gpgcheck=1
-
-[CentOS_Updates]
-name=CentOS_Updates
-baseurl=http://centos-mirror.rbc.ru/pub/centos/7/updates/$basearch/
-gpgkey=http://centos-mirror.rbc.ru/pub/centos/7/os/x86_64/RPM-GPG-KEY-CentOS-7
-gpgcheck=1
-
-[CentOS_Base]
-name=CentOS_Base
-baseurl=http://centos-mirror.rbc.ru/pub/centos/7/os/$basearch/
-gpgkey=http://centos-mirror.rbc.ru/pub/centos/7/os/x86_64/RPM-GPG-KEY-CentOS-7
-gpgcheck=1
-
-
-sudo yum update
-*/

@@ -1,0 +1,57 @@
+mdw, smdw, sdw1, sdw2, gp-stat
+Репозитарий http://centos-mirror.rbc.ru/pub/centos/7/os/x86_64/
+Добавление пользователя в sudo
+usermod -aG wheel username
+
+Установка сети:
+sudo vi /etc/sysconfig/network-scripts/ifcfg-ens192
+TYPE="Ethernet"
+PROXY_METHOD="none"
+BROWSER_ONLY="no"
+BOOTPROTO=static
+DEFROUTE="yes"
+IPV4_FAILURE_FATAL="no"
+IPV6INIT="yes"
+IPV6_AUTOCONF="yes"
+IPV6_DEFROUTE="yes"
+IPV6_FAILURE_FATAL="no"
+IPV6_ADDR_GEN_MODE="stable-privacy"
+NAME="ens192"
+UUID="e1bf215c-6404-4da0-becd-099cb8572857"
+DEVICE="ens192"
+ONBOOT="yes"
+IPADDR="10.0.5.116"
+PREFIX="24"
+GATEWAY="10.0.5.1"
+DNS1="10.0.3.5"
+IPV6_PRIVACY="no"
+DNS2="10.0.3.6"
+
+
+sudo vi /etc/sysconfig/network
+HOSTNAME=gp-mdw
+
+
+sudo timedatectl set-timezone Asia/Vladivostok
+
+systemctl restart network
+cat /etc/resolv.conf для получения списка активных DNS адресов.
+
+
+
+
+sudo hostnamectl set-hostname hadoop-4 # меняем если надо название хоста
+
+Добавляем пути, до хостов (если требуется)
+sudo vi /etc/hosts
+127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4
+::1         localhost localhost.localdomain localhost6 localhost6.localdomain6
+10.0.5.116 gp-mdw 
+10.0.5.117 gp-smdw
+10.0.5.118 gp-sdw1
+10.0.5.123 gp-sdw2
+10.0.5.124 gp-stat
+
+
+Копируем ключ, для автоматического подключения к хосту
+ssh-copy-id dwh@10.0.5.117
